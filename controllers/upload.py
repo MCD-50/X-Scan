@@ -7,9 +7,6 @@ class UploadHandler(RequestHandler):
     Class to upload the file and generate report
     """
 
-    def get(self):
-        self.render("upload.html")
-
     def post(self):
 
         # upload audio file in server
@@ -19,5 +16,3 @@ class UploadHandler(RequestHandler):
         fh = open(__UPLOADS__ + voice['filename'], 'wb')
         fh.write(voice['body'])
         fh.close()
-
-        # self.redirect("/report?file=" + /cname)
