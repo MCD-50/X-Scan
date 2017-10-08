@@ -105,4 +105,4 @@ venv.bak/
 sftp-config.json
 
 #uploads
-uploads/*
+static/uploads/*

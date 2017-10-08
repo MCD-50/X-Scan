@@ -1,6 +1,6 @@
 from controllers.modules import *
 
-__UPLOADS__ = "uploads/"
+__UPLOADS__ = "static/uploads/"
 
 class UploadHandler(RequestHandler):
     """
