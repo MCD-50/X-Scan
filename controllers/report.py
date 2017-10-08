@@ -1,12 +1,11 @@
 from controllers.modules import *
-from deeplearing.model import Resnet9
 import torch
-from skimage import io
 import numpy as np
-import torch.nn as nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 from skimage import io, segmentation, morphology
+import os
+import base64
 
 
 __UPLOADS__ = "static/uploads/"
@@ -40,29 +39,8 @@ def zero_one_normalize(array):
 class ReportHandler(RequestHandler):
     """Class to upload the file and generate report."""
 
-    def __init__(self):
-        super(ReportHandler, self).__init__()
-        self.tags = ["peffusion", "nodule", "atelectasis"]
-        self.name = ["Pleural Effusion", "Nodule", "Atelectasis"]
-        self.mpath = ["deeplearning/best_model_peffusion.pt",
-                      "deeplearning/best_model_nodule.pt",
-                      "deeplearning/best_model_atelectasis.pt"]
-        self.models = []
-        for mpath in self.mpath:
-            model_data = torch.load(mpath)
-            sd = model_data['network']
-            model = Resnet9()
-            model.load_state_dict(sd)
-
-            model.eval()
-            model.cuda()
-            model = nn.DataParallel(model)
-            self.models.append(model)
-        self.description = [
-            "A pleural effusion is a buildup of fluid in the pleural space, an area between the layers of tissue that line the lungs and the chest cavity. It may also be referred to as effusion or pulmonary effusion.", "A lung nodule is defined as a “spot” on the lung that is three centimeters (about 1.5 inches) in diameter or less. These nodules are often referred to as `coin lesions` when described on an imaging test. If an abnormality is seen on an x-ray of the lungs is larger than three centimeters, it is considered a “lung mass” instead of a nodule and is more likely to be cancerous.", "Atelectasis is the collapse or closure of a lung resulting in reduced or absent gas exchange."]
-
     def get_marked_img(self, img, heatmap):
-        image = images[0]
+        image = img[0]
         image = zero_one_normalize(image)
         prob_image = heatmap[1]
         lower_clip = np.percentile(prob_image, 10)
@@ -93,25 +71,41 @@ class ReportHandler(RequestHandler):
         data_std = 0.08537056890509876
         img = (img - data_mean) / data_std
         img = img[np.newaxis, np.newaxis, :]
+        img = img.astype(np.float32)
         input_img = Variable(torch.from_numpy(img).cuda())
         tags_prob = []
         marked_img = []
-        for i, model in enumerate(self.models):
+        for i, model in enumerate(modelslist):
             output = model(input_img)
             prob_tensor = F.softmax(output['classification']).data
             prob = prob_tensor.cpu().numpy()
             heatmap = F.softmax(output['segmentation']).data.cpu().numpy()
-            input_images = input_img.cpu().numpy()
-            overlaid_image = self.get_marked_img(input_images[i], heatmap[i])
-            tags_prob.append(prob[i][1])
-            marked_img.append(overlaid_image)
+            overlaid_image = self.get_marked_img(img[0], heatmap[0])
+            io.imsave("tmp.png", overlaid_image)
+            with open("tmp.png", "rb") as imageFile:
+                b64img = base64.b64encode(imageFile.read())
+                marked_img.append(b64img)
+            tags_prob.append(prob[0][1])
+
+        data_to_send = {}
+        for i, tag in enumerate(tagslist):
+            datum = {
+                'name': tagnames[i],
+                'prob': tags_prob[i],
+                'description': tagdescription[i],
+                'img': marked_img[i]
+            }
+            data_to_send[tag] = datum
+        return data_to_send
 
 
     def get(self):
         # upload audio file in server
         fle = self.get_argument("file")
+        pre = self.predict(os.path.realpath(os.path.join(__UPLOADS__, fle)))
         data = {
-                "fname" : __UPLOADS__ + fle
+                "fname": __UPLOADS__ + fle,
+                "pred_data": pre
         }
         self.render("report.html", data=data)
 
