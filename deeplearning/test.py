@@ -30,6 +30,7 @@ model.load_state_dict(sd)
 
 model.eval()
 model.cuda()
+# print(model)
 model = nn.DataParallel(model)
 
 

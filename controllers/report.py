@@ -52,7 +52,7 @@ class ReportHandler(RequestHandler):
         prob_image[prob_image < threshold_prob] = 0
         prob_image[prob_image >= threshold_prob] = 1
         prob_image = prob_image.astype(int)
-        prob_image = morphology.remove_small_objects(prob_image, min_size=100)
+        prob_image = morphology.remove_small_objects(prob_image, min_size=80)
         overlaid_image = segmentation.mark_boundaries(
             image, prob_image, color=(1, 0, 0), mode='thick')
         # print(merged_image)
@@ -63,39 +63,40 @@ class ReportHandler(RequestHandler):
         """Predict from image."""
         img = io.imread(filelocation)
         img_low = np.percentile(img, 1)
-        img_high = np.percentile(img, 2)
+        img_high = np.percentile(img, 99)
         img = np.clip(img, img_low, img_high)
-        img = img - img.min()
-        img = img / img.max()
+        img = zero_one_normalize(img)
+        img = img.astype(np.float32)
         data_mean = 0.5182097657604547
         data_std = 0.08537056890509876
         img = (img - data_mean) / data_std
         img = img[np.newaxis, np.newaxis, :]
-        img = img.astype(np.float32)
-        input_img = Variable(torch.from_numpy(img).cuda())
+        input_img = Variable(torch.from_numpy(img).cuda(), volatile=True)
         tags_prob = []
         marked_img = []
         for i, model in enumerate(modelslist):
             output = model(input_img)
+            # print(output)
             prob_tensor = F.softmax(output['classification']).data
+            # print(prob_tensor)
             prob = prob_tensor.cpu().numpy()
             heatmap = F.softmax(output['segmentation']).data.cpu().numpy()
             overlaid_image = self.get_marked_img(img[0], heatmap[0])
             io.imsave("tmp.png", overlaid_image)
             with open("tmp.png", "rb") as imageFile:
-                b64img = base64.b64encode(imageFile.read())
+                b64img = b"data:image/png;base64, " + base64.b64encode(imageFile.read())
                 marked_img.append(b64img)
-            tags_prob.append(prob[0][1])
+            tags_prob.append(prob[0][1] * 100)
 
-        data_to_send = {}
+        data_to_send = []
         for i, tag in enumerate(tagslist):
             datum = {
                 'name': tagnames[i],
-                'prob': tags_prob[i],
+                'prob': round(tags_prob[i]),
                 'description': tagdescription[i],
                 'img': marked_img[i]
             }
-            data_to_send[tag] = datum
+            data_to_send.append(datum)
         return data_to_send
 
 
@@ -103,8 +104,9 @@ class ReportHandler(RequestHandler):
         # upload audio file in server
         fle = self.get_argument("file")
         pre = self.predict(os.path.realpath(os.path.join(__UPLOADS__, fle)))
+        from pprint import pprint as pp
+        # pp(pre)
         data = {
-                "fname": "http://localhost:8000/" + __UPLOADS__ + fle,
-                "pred_data": pre
+                "fname": __UPLOADS__ + fle,
         }
-        self.render("report.html", data=data)
+        self.render("report.html", data=data, pred=pre)

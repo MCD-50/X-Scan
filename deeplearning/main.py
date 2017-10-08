@@ -28,7 +28,7 @@ options.transform = None
 # print(iterators())
 # dataloader = tqdm(iterable=iterators, ncols=0)
 
-model = Resnet18()
+model = Resnet9()
 model.cuda()
 model = nn.DataParallel(model)
 optimizer = optim.SGD(

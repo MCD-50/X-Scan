@@ -42,10 +42,9 @@ body {
 }
 
 .card_left {
-  height: 500px;
   color: white;
   background-color: black;
-  border-radius: 10px;
+  border-radius: 2px;
 }
 .blue {
   background-color: blue;
@@ -67,12 +66,16 @@ body {
 }
 
 .card_right {
-  margin-left:20px;
-  margin-top:20px;
+  /*margin-left:20px;
+  margin-top:20px;*/
 }
 
 .card-outline-secondary {
   border-radius: 10px;
+}
+
+.container img{
+  width:100%;
 }
 
 h1 {
@@ -83,9 +86,8 @@ h1 {
 }
 
 #xray_view {
-  height: 420px;
   width: 100%;
-  margin-top: 15px;
+  margin: 10px;
 }
 
 .card-outline-secondary {

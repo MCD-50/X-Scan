@@ -30,10 +30,12 @@
     </div>
   </nav>
 
+<div class="container">
   <div class="row">
       {% block content %}{% end %}
     </div>
   </div>
+</div>
 
 
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
@@ -43,6 +45,12 @@
   <script type="text/javascript" src="../static/js/dropzone.js"></script>
 
 <script text="type/javascript">
+
+  function changeimg(img){
+    document.getElementById("xray_view").src=img;
+  }
+
+
   var i=1;
   $("#DropZoneFiddle").dropzone({
     url: "/upload",
