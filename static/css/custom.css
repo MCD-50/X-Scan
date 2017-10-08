@@ -19,7 +19,8 @@
 }
 
 body {
-  font-family: sans-serif;
+  font-family: Montserrat;
+  background: #fafafa;
 }
 
 .dropzone{
@@ -42,7 +43,35 @@ body {
 
 .card_left {
   height: 500px;
-  background-color: #cfd8dc;
+  color: white;
+  background-color: black;
+  border-radius: 10px;
+}
+.blue {
+  background-color: blue;
+  color: white !important;
+}
+
+.title {
+  font-size: 43px;
+  font-weight: bold;
+}
+
+.content_bottom {
+  margin-top: 10px;
+}
+
+.content {
+  /*color: black;*/
+  margin-bottom: 10px;
+}
+
+.card_right {
+  margin-left:20px;
+  margin-top:20px;
+}
+
+.card-outline-secondary {
   border-radius: 10px;
 }
 
@@ -51,4 +80,14 @@ h1 {
   margin:auto;
   margin-top: 230px;
   position: relative;
+}
+
+#xray_view {
+  height: 420px;
+  width: 100%;
+  margin-top: 15px;
+}
+
+.card-outline-secondary {
+  color: grey;
 }

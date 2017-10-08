@@ -11,6 +11,6 @@ class ReportHandler(RequestHandler):
         # upload audio file in server
         fle = self.get_argument("file")
         data = {
-                "fname" : __UPLOADS__ + fle
+                "fname" : "http://localhost:8000/" + __UPLOADS__ + fle
         }
         self.render("report.html", data = data)
