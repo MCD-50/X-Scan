@@ -1,0 +1,54 @@
+.navbar-default {
+  background-color: blue;
+}
+
+.container-fluid {
+  background-color: blue;
+}
+
+.navbar-default .navbar-brand {
+  color: white;
+}
+
+.navbar-default:hower .navbar-brand:hower {
+  color: white;
+}
+
+.navbar-default .navbar-nav > li > a{
+  color: white;
+}
+
+body {
+  font-family: sans-serif;
+}
+
+.dropzone{
+  text-align:center;
+  font-size:18px;
+  height: 500px;
+}
+
+.glyphicon-download{
+  font-size:1.5em;
+}
+
+.dz-image {
+  text-align: center;
+}
+
+.dz-details, .dz-success-mark, .dz-error-message, .dz-error-mark{
+  display: none !important;
+}
+
+.card_left {
+  height: 500px;
+  background-color: #cfd8dc;
+  border-radius: 10px;
+}
+
+h1 {
+  text-align: center;
+  margin:auto;
+  margin-top: 230px;
+  position: relative;
+}
