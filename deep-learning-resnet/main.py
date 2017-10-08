@@ -6,7 +6,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 from torch.autograd import Variable
-from model import Resnet18, Resnet9
+from model import get_model
 from torchnet.meter import AverageValueMeter
 import gc
 
@@ -18,6 +18,7 @@ parser.add('--n_classes', required=True, type=int, help="Number of classes.")
 parser.add('--lr', required=True, type=float, help="Starting learning rate")
 parser.add('--nesterov', default=True, help="Nesterov momentum.")
 parser.add('--momentum', default=0.9, help="Momentum", type=float)
+parser.add('--loss_wt', default=2, type=float, help="Weights for loss func.")
 
 options, unknown_options = parser.parse_known_args()
 
@@ -26,7 +27,7 @@ options.transform = None
 # print(iterators())
 # dataloader = tqdm(iterable=iterators, ncols=0)
 
-model = Resnet9()
+model = get_model(options)
 model.cuda()
 model = nn.DataParallel(model)
 optimizer = optim.SGD(
@@ -34,7 +35,8 @@ optimizer = optim.SGD(
     lr=options.lr,
     momentum=options.momentum,
     nesterov=options.nesterov)
-class_crit = nn.CrossEntropyLoss(torch.FloatTensor([1, 5])).cuda()
+class_crit = nn.CrossEntropyLoss(
+    torch.FloatTensor([1, options.loss_wt])).cuda()
 best_val_loss = 1000000000
 for epoch in range(50):
     def run(mode):
@@ -50,7 +52,7 @@ for epoch in range(50):
             # print(target.max(), target.min())
             output = model(Variable(input.cuda(), volatile=mode != 'train'))
             loss = class_crit(
-                output['classification'], Variable(target.cuda()))
+                output, Variable(target.cuda()))
             total_loss.add(loss[0].data[0])
             if mode == 'train':
                 optimizer.zero_grad()
@@ -64,6 +66,6 @@ for epoch in range(50):
     if val_loss < best_val_loss:
         checkpoint = {'network': model.module.state_dict(),
                       'epoch': epoch, 'args': options}
-        torch.save(checkpoint, 'best_model_{}.pt'.format(options.buckets))
+        torch.save(checkpoint, 'best_model_resnet_{}.pt'.format(options.buckets))
         best_val_loss = val_loss
         print("Best val loss: {} at {}".format(best_val_loss, epoch))

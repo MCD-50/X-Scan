@@ -19,6 +19,7 @@ parser.add('--n_classes', required=True, type=int, help="Number of classes.")
 parser.add('--lr', required=True, type=float, help="Starting learning rate")
 parser.add('--nesterov', default=True, help="Nesterov momentum.")
 parser.add('--momentum', default=0.9, help="Momentum", type=float)
+parser.add('--ce_loss_wt', default=5, help='Classification loss wts.', type=float)
 
 options, unknown_options = parser.parse_known_args()
 
@@ -27,7 +28,7 @@ options.transform = None
 # print(iterators())
 # dataloader = tqdm(iterable=iterators, ncols=0)
 
-model = Resnet9()
+model = Resnet18()
 model.cuda()
 model = nn.DataParallel(model)
 optimizer = optim.SGD(
@@ -60,7 +61,6 @@ for epoch in range(50):
                 output['classification'], Variable(target.cuda()))
             loss = class_loss
             if num_indices != 0:
-                dice_loss = dice_loss * target.size(0) / num_indices
                 loss = loss + dice_loss
                 total_dice_loss.add(dice_loss[0].data[0])
             total_loss.add(loss[0].data[0])
@@ -82,3 +82,6 @@ for epoch in range(50):
         torch.save(checkpoint, 'best_model_{}.pt'.format(options.buckets))
         best_val_loss = val_loss
         print("Best val loss: {} at {}".format(best_val_loss, epoch))
+    if (epoch + 1) % 10 == 0:
+        for param_gp in optimizer.param_groups:
+                param_gp['lr'] *= 0.5

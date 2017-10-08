@@ -11,7 +11,7 @@ import configargparse
 import numpy as np
 from PIL import Image
 from matplotlib import cm
-from skimage import io
+from skimage import io, segmentation, morphology
 import os
 
 
@@ -19,13 +19,11 @@ parser = configargparse.get_argument_parser()
 parser.add('-c', '--config', required=True, is_config_file=True,
            help='config file path')
 parser.add('--n_classes', required=True, type=int, help="Number of classes.")
+parser.add('--mpath', required=True, help='Model path to be tested.')
 
 options, unknown_options = parser.parse_known_args()
 
-model_path = 'best_model_peffusion.pt'
-tag = 'peffusion'
-
-model_data = torch.load(model_path)
+model_data = torch.load(options.mpath)
 sd = model_data['network']
 model = Resnet9()
 model.load_state_dict(sd)
@@ -61,43 +59,29 @@ def zero_one_normalize(array):
     return array
 
 
-def merge_image_heatmap(image, heatmap, color=(255, 255, 255)):
-    """Merge an image and heatmap to create a single image.
-
-    Arguments
-    ---------
-    image: ndarray
-        A H*W*3 array. Must be an RGB image.
-    heatmap: ndarray
-        A H*W array of probability of each pixel, probability is directly
-        proportional to the importance of pixel in outcome.
-    color: tuple(int)
-        A size 3 tuple of int.
-
-    Returns
-    -------
-    ndarray
-        Numpy aray with heatmap embedded onto image and opacity of 0.25.
-
-    """
-    assert image.shape[2] == 3, \
-        "Input image has {} channels, must have 3.".format(image.shape[2])
-    background = np.concatenate([
-        image, np.ones(shape=(heatmap.shape[0], heatmap.shape[1], 1))], axis=2)
-    background = np.uint8(background * 255)
-    background_image = Image.fromarray(background)
-    foreground = np.uint8(cm.jet(heatmap) * 255)
-    heatmap_opacity = foreground[:, :, 3]
-    heatmap_opacity[:] = 64
-    threshold_prob = min(0.3, heatmap.max() - 0.05)
-    heatmap_opacity[heatmap < threshold_prob] = 0
-    foreground_image = Image.fromarray(foreground)
-    image = Image.alpha_composite(background_image, foreground_image)
-    image.load()  # needed for split()
-    background = Image.new('RGB', image.size, color)
-    background.paste(image, mask=image.split()[3])
-    image_array = np.array(background, dtype=np.uint8)
-    return image_array
+def save_heatmaps(images, heatmaps):
+    for i in range(images.shape[0]):
+        image = images[i][0]
+        image = zero_one_normalize(image)
+        prob_image = heatmap[i][1]
+        lower_clip = np.percentile(prob_image, 10)
+        upper_clip = np.percentile(prob_image, 90)
+        prob_image = np.clip(prob_image, lower_clip, upper_clip)
+        # prob_image = zero_one_normalize(prob_image)
+        # print(prob_image.max(), prob_image.mean(), prob_image.min())
+        threshold_prob = 0.4
+        prob_image[prob_image < threshold_prob] = 0
+        prob_image[prob_image >= threshold_prob] = 1
+        prob_image = prob_image.astype(int)
+        prob_image = morphology.remove_small_objects(prob_image, min_size=100)
+        overlaid_image = segmentation.mark_boundaries(
+            image, prob_image, color=(1, 0, 0), mode='thick')
+        # print(merged_image)
+        output_path = os.path.join(
+            'examples', '{}_{}_{}_{}'.format(
+                prob[i][1], target[i], options.buckets,
+                os.path.basename(data['filepath'][i])))
+        io.imsave(output_path, overlaid_image)
 
 
 auc_meter = AUCMeter()
@@ -114,24 +98,7 @@ for batch_idx, data in bar(enumerate(iterator['val']())):
     conf_meter.add(prob_tensor, data['target'])
 
     input_images = data['input'].cpu().numpy()
-    for i in range(input_images.shape[0]):
-        image = np.repeat(input_images[i], 3, axis=0)
-        image = zero_one_normalize(image)
-        image = np.transpose(image, (1, 2, 0))
-        prob_image = zero_one_normalize(heatmap[i][prob[i].argmax(0)])
-        lower_clip = np.percentile(prob_image, 10)
-        upper_clip = np.percentile(prob_image, 90)
-        pixel_weights = np.clip(prob_image, lower_clip, upper_clip)
-        pixel_weights = zero_one_normalize(prob_image)
-        print(prob_image.max(), prob_image.mean(), prob_image.min())
-        merged_image = merge_image_heatmap(image, prob_image)
-        # print(merged_image)
-        output_path = os.path.join(
-            'examples', '{}_{}_{}_{}'.format(
-                prob[i][1], target[i], options.buckets,
-                os.path.basename(data['filepath'][i])))
-        io.imsave(output_path, merged_image)
-    break
+    # save_heatmaps(input_images, heatmap)
 
 print(auc_meter.value()[0])
 print(conf_meter.value())

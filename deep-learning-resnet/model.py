@@ -1,18 +1,24 @@
+"""Resnet model."""
 import torch.nn as nn
 import math
 import torch.utils.model_zoo as model_zoo
+import configargparse
+
+parser = configargparse.get_argument_parser()
+parser.add_argument('--num_classes', type=int, required=True,
+                    help='Number of classes.')
+parser.add_argument('--dropout', type=float, required=True,
+                    help='Amount of dropout required.')
+parser.add_argument('--resnet_depth', default=18, type=int, required=True,
+                    help='Depth of resnet required.')
 
 
-__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
-           'resnet152']
+__all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet9']
 
 
 model_urls = {
     'resnet18': 'https://s3.amazonaws.com/pytorch/models/resnet18-5c106cde.pth',
     'resnet34': 'https://s3.amazonaws.com/pytorch/models/resnet34-333f7ec4.pth',
-    'resnet50': 'https://s3.amazonaws.com/pytorch/models/resnet50-19c8e357.pth',
-    'resnet101': 'https://s3.amazonaws.com/pytorch/models/resnet101-5d3b4d8f.pth',
-    'resnet152': 'https://s3.amazonaws.com/pytorch/models/resnet152-b121ed2d.pth',
 }
 
 
@@ -163,6 +169,19 @@ class ResNet(nn.Module):
         return x
 
 
+def resnet9(pretrained=False, num_classes=2, dropout=-1, im_size=224):
+    """Constructs a ResNet-18 model.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(BasicBlock, [1, 1, 1, 1], num_classes=num_classes,
+                   im_size=im_size, dropout=dropout)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+    return model
+
+
 def resnet18(pretrained=False, num_classes=2, dropout=-1, im_size=224):
     """Constructs a ResNet-18 model.
 
@@ -189,51 +208,13 @@ def resnet34(pretrained=False, num_classes=2, dropout=-1, im_size=224):
     return model
 
 
-def resnet50(pretrained=False, num_classes=2, im_size=224):
-    """Constructs a ResNet-50 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes,
-                   im_size=im_size, dropout=dropout)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
-    return model
-
-
-def resnet101(pretrained=False, num_classes=2, im_size=224):
-    """Constructs a ResNet-101 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], num_classes=num_classes,
-                   im_size=im_size, dropout=dropout)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet101']))
-    return model
-
-
-def resnet152(pretrained=False, num_classes=2):
-    """Constructs a ResNet-152 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    model = ResNet(Bottleneck, [3, 8, 36, 3], num_classes=num_classes,
-                   im_size=im_size, dropout=dropout)
-    if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet152']))
-    return model
-
-
 def get_model(args):
-    model_dict = {18: resnet18, 34: resnet34, 50: resnet50, 101: resnet101, 152: resnet152}
+    model_dict = {18: resnet18, 34: resnet34, 9: resnet9}
     num_classes = args.num_classes
     if args.resnet_depth in model_dict:
         return model_dict[args.resnet_depth](False, num_classes=num_classes,
-                                             dropout=args.dropout, im_size=args.im_size)
+                                             dropout=args.dropout,
+                                             im_size=args.im_size)
     else:
         print('Invalid resnet depth')
         raise RuntimeError
